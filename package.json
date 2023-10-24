@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/Kateaclysm/tinyApp/issues"
   },
-  "homepage": "https://github.com/Kateaclysm/tinyApp#readme"
+  "homepage": "https://github.com/Kateaclysm/tinyApp#readme",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
 }
