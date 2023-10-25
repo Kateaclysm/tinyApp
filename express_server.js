@@ -8,6 +8,19 @@ const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
+function generateRandomString(length) {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789"
+  const newID = Array.from(characters);
+  let min = Math.ceil(0);
+  let max = Math.floor(newID.length);
+  let shortenedID = [];
+  for (let i = 0; i < length; i++) {
+    let value = Math.floor(Math.random() * ( max - min +1) + min);
+    shortenedID.push(characters[value]);
+  }
+  shortenedID = shortenedID.join('');
+  return shortenedID;
+};
 
 app.use(express.urlencoded({ extended: true }));
 
