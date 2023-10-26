@@ -80,3 +80,8 @@ app.post("/urls/:id", function(req, res) {
   urlDatabase[shortURL] = longURL
   res.redirect('/urls');
 });
+
+app.post("/login", function(req, res){
+  res.cookie("Username",req.body);
+  res.redirect("/urls");
+})
