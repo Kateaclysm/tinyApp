@@ -69,3 +69,9 @@ app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
+app.post("/urls/:id/delete", function(req, res) {
+  const id = req.params.id;
+  delete urlDatabase[id];
+  res.redirect("/urls");
+});
+
