@@ -10,20 +10,26 @@
       aria-expanded="false"
       aria-label="Toggle navigation"
     >
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-      <div class="navbar-nav">
-        <a class="nav-item nav-link" href="/urls">My URLs</a>
-        <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
-        <form method="POST" action="/login">
-          <input type="text" name="username">
-          <button type="submit">Login</button>
-        </form>
-        <% if (username) { %>
-          <p>Logged in as: <%= username %> </p>
-        <% } %>
-      </div>
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+    <div class="navbar-nav">
+      <a class="nav-item nav-link" href="/urls">My URLs</a>
+      <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
     </div>
-  </nav>
+    </div>
+        
+        <% if (username) { %>
+          <form class="form-inline" method="POST" action="/logout"> 
+            <span class="mr-3">Logged in as: <%= username %> </span>
+        <button class="btn btn-outline-danger my-2 my-sm-0" type="submit">Logout</button>
+        </form>
+        <% } else{  %>
+        <form class="form-inline" method="POST" action="/login">
+          <input class="form-control mr-sm-2" type="text" name="username">
+          <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Login</button>
+        </form>
+      <% } %>
+        
+    </nav>
 </header>
