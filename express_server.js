@@ -22,15 +22,29 @@ function generateRandomString(length) {
   shortenedID = shortenedID.join('');
   return shortenedID;
 };
+function fetchUser(database, userEmail) {
+  for (user in database) {
+    if (database[user].email === userEmail) {
+      return database[user];
+    }
+  }
+};
 
+const userDatabase = {
+  userRandomID: {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "violet"
+  }
+};
 app.use(express.urlencoded({ extended: true }));
 
 
 app.get("/urls", (req, res) => {
-  const templateVars = { 
-    username: req.cookies["username"],
-    urls: urlDatabase };
-  res.render("urls_index", templateVars);
+let user_id = req.cookies["user_id"];
+let user = userDatabase[user_id]; 
+let templateVars = { urls: urlDatabase, user: user };
+res.render("urls_index", templateVars);
 });
 
 
@@ -55,8 +69,9 @@ app.get("/hello", (req, res) => {
 
 
 app.get("/urls/new", (req, res) => {
-  const { username } = req.cookies;
-  const templateVars = { username };
+let user_id = req.cookies["user_id"];
+let user = userDatabase[user_id]; 
+let templateVars = { urls: urlDatabase, user: user };
   res.render("urls_new", templateVars);
 });
 
@@ -66,7 +81,9 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id]};
+  let user_id = req.cookies["user_id"];
+  let user = userDatabase[user_id]; 
+  let templateVars = { urls: urlDatabase, id: req.params.id, longURL: urlDatabase[req.params.id], user: user};
   res.render("urls_show", templateVars);
 })
 
@@ -83,15 +100,58 @@ app.post("/urls/:id", function(req, res) {
 });
 
 app.post("/login", function(req, res){
-  res.cookie("username",req.body.username);
-  res.redirect("/urls");
+  let email = req.body.email;
+  let password = req.body.password;
+  let loggedInUser = fetchUser(userDatabase, email);
+  if (loggedInUser) {
+    if (password === loggedInUser.password) {
+      res.cookie("user_id", loggedInUser.id);
+      res.redirect("/urls");
+      return;
+    } else {
+      res.status(403).send("Error. Password does not match records.");
+      return;
+    }
+    
+  } else {
+    res.status(403).send("Error. Email has not been registered")
+    res.redirect("/urls");
+    return;
+  }
+  
 })
 
 app.post("/logout", function(req, res){
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect('/urls');
 });
 
+app.get("/register", function(req, res){
+  res.render("urls_registration.ejs")
+});
+
+app.post("/register", function(req, res){
+  newUserID = generateRandomString(6);
+  password = req.body.password;
+  email = req.body.email;
+  if (password === "" || email === "") {
+    res.status(400).send("Error. Invalid field detected.");
+  }
+  if (fetchUser(userDatabase, email)) {
+    res.status(400).send("Error. Email is already registered.")
+  }
+  userDatabase[newUserID] = {
+    id: newUserID,
+    email: req.body.email,
+    password: req.body.password
+  };
+  res.cookie("user_id", newUserID);
+  res.redirect("/urls");
+})
+
+app.get("/login", function(req, res) {
+  res.render("urls_login.ejs");
+})
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
