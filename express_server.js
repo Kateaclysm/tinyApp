@@ -1,7 +1,8 @@
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
-const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser');
+const { restart } = require("nodemon");
 app.use(cookieParser());
 app.set("view engine", "ejs");
 
@@ -50,6 +51,9 @@ res.render("urls_index", templateVars);
 
 
 app.post("/urls", (req, res) => {
+  if (!req.cookies["user_id"]) {
+    return res.status(403).send("Sorry! Only registered users can shorten URLs.")
+  }
   console.log(req.body); // Log the POST request body to the console
   newShortID = generateRandomString(6);
   newLongURL = req.body.longURL;
@@ -65,6 +69,7 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
+  console.log(req.cookies["user_id"]);
 });
 
 
@@ -72,12 +77,18 @@ app.get("/urls/new", (req, res) => {
 let user_id = req.cookies["user_id"];
 let user = userDatabase[user_id]; 
 let templateVars = { urls: urlDatabase, user: user };
+if (!req.cookies["user_id"]) {
+ return res.redirect("/login");
+}
   res.render("urls_new", templateVars);
 });
 
 app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id]
-  res.redirect(longURL);
+  if (!longURL) {
+    return res.status(404).send("Sorry! This URL does not exist in our Database.")
+  }
+  return res.redirect(longURL);
 });
 
 app.get("/urls/:id", (req, res) => {
@@ -90,13 +101,13 @@ app.get("/urls/:id", (req, res) => {
 app.post("/urls/:id/delete", function(req, res) {
   const id = req.params.id;
   delete urlDatabase[id];
-  res.redirect("/urls");
+  return res.redirect("/urls");
 });
 app.post("/urls/:id", function(req, res) {
   const longURL = req.body.newLongURL;
   const shortURL = req.params.id;
   urlDatabase[shortURL] = longURL
-  res.redirect('/urls');
+  return res.redirect('/urls');
 });
 
 app.post("/login", function(req, res){
@@ -106,7 +117,7 @@ app.post("/login", function(req, res){
   if (loggedInUser) {
     if (password === loggedInUser.password) {
       res.cookie("user_id", loggedInUser.id);
-      res.redirect("/urls");
+      return res.redirect("/urls");
       return;
     } else {
       res.status(403).send("Error. Password does not match records.");
@@ -114,19 +125,20 @@ app.post("/login", function(req, res){
     }
     
   } else {
-    res.status(403).send("Error. Email has not been registered")
-    res.redirect("/urls");
-    return;
+    return res.status(403).send("Error. Email has not been registered")
   }
   
 })
 
 app.post("/logout", function(req, res){
   res.clearCookie("user_id");
-  res.redirect('/urls');
+  return res.redirect('/urls');
 });
 
 app.get("/register", function(req, res){
+  if (req.cookies["user_id"]) {
+    return res.redirect('/urls');
+  }
   res.render("urls_registration.ejs")
 });
 
@@ -135,10 +147,10 @@ app.post("/register", function(req, res){
   password = req.body.password;
   email = req.body.email;
   if (password === "" || email === "") {
-    res.status(400).send("Error. Invalid field detected.");
+    return res.status(400).send("Error. Invalid field detected.");
   }
   if (fetchUser(userDatabase, email)) {
-    res.status(400).send("Error. Email is already registered.")
+    return res.status(400).send("Error. Email is already registered.")
   }
   userDatabase[newUserID] = {
     id: newUserID,
@@ -146,12 +158,16 @@ app.post("/register", function(req, res){
     password: req.body.password
   };
   res.cookie("user_id", newUserID);
-  res.redirect("/urls");
+  return res.redirect("/urls");
 })
 
 app.get("/login", function(req, res) {
+  if (req.cookies["user_id"]) {
+    return res.redirect('/urls');
+  }
   res.render("urls_login.ejs");
-})
+});
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
