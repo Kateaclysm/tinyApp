@@ -7,8 +7,14 @@ app.use(cookieParser());
 app.set("view engine", "ejs");
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {
+    longURL: "http://www.lighthouselabs.ca",
+    userID: "userRandomID"
+  },
+  "9sm5xK": {
+    longURL: "http://www.google.com",
+    userID: "userRandomID"
+  }
 };
 function generateRandomString(length) {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789"
@@ -43,7 +49,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/urls", (req, res) => {
 let user_id = req.cookies["user_id"];
-let user = userDatabase[user_id]; 
+let user = userDatabase[user_id];
 let templateVars = { urls: urlDatabase, user: user };
 res.render("urls_index", templateVars);
 });
@@ -54,10 +60,10 @@ app.post("/urls", (req, res) => {
   if (!req.cookies["user_id"]) {
     return res.status(403).send("Sorry! Only registered users can shorten URLs.")
   }
-  console.log(req.body); // Log the POST request body to the console
   newShortID = generateRandomString(6);
   newLongURL = req.body.longURL;
-  urlDatabase[newShortID] = newLongURL;
+  urlDatabase[newShortID] = newShortID;
+  urlDatabase[newShortID] = {longURL: newLongURL}
   res.redirect(`/urls/${newShortID}`)
 });
 
@@ -84,7 +90,7 @@ if (!req.cookies["user_id"]) {
 });
 
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id]
+  const longURL = urlDatabase[req.params.id].longURL
   if (!longURL) {
     return res.status(404).send("Sorry! This URL does not exist in our Database.")
   }
@@ -93,9 +99,10 @@ app.get("/u/:id", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   let user_id = req.cookies["user_id"];
-  let user = userDatabase[user_id]; 
-  let templateVars = { urls: urlDatabase, id: req.params.id, longURL: urlDatabase[req.params.id], user: user};
-  res.render("urls_show", templateVars);
+  let user = userDatabase[user_id];
+  let id = req.params.id;
+  let templateVars = { urls: urlDatabase, id: req.params.id, user: user, longURL: urlDatabase[id].longURL};
+  return res.render("urls_show", templateVars);
 })
 
 app.post("/urls/:id/delete", function(req, res) {
@@ -106,7 +113,8 @@ app.post("/urls/:id/delete", function(req, res) {
 app.post("/urls/:id", function(req, res) {
   const longURL = req.body.newLongURL;
   const shortURL = req.params.id;
-  urlDatabase[shortURL] = longURL
+  urlDatabase[shortURL] = {longURL: longURL}
+  console.log(urlDatabase);
   return res.redirect('/urls');
 });
 
