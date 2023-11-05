@@ -21,13 +21,14 @@
         
         <% if (user) { %>
           <form class="form-inline" method="POST" action="/logout"> 
-            <span class="mr-3">Logged in as: <%= user.email %> </span>
+            <span class="mr-3">Logged in as: <%= user %></span>
         <button class="btn btn-outline-danger my-2 my-sm-0" type="submit">Logout</button>
         </form>
         <% } else{  %>
         <form class="form-inline" method="GET" action="/login">
           <button class="btn btn-outline-light my-2 my-sm-0" type="get">Log in</button>
           </form>
+          <%= user %>
           <form class="form-inline" method="GET" action="/register">
           <button class="btn btn-outline-light my-2 my-sm-0" type="get">Register</button>
         </form>
