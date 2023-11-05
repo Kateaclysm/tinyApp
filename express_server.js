@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const { restart } = require("nodemon");
 const res = require("express/lib/response");
 const e = require("express");
+const bcrypt = require("bcryptjs");
 app.use(cookieParser());
 app.set("view engine", "ejs");
 
@@ -162,17 +163,23 @@ app.post("/urls/:id", function(req, res) {
     return res.status(403).send("Sorry! You have to be logged in in order to register a new url.")
   }
 });
+app.get("/login", function(req, res) {
+  if (req.cookies["user_id"]) {
+    return res.redirect('/urls');
+  }
+  res.render("urls_login.ejs");
+});
 
 app.post("/login", function(req, res){
   let email = req.body.email;
-  let password = req.body.password;
   let loggedInUser = fetchUser(userDatabase, email);
+  let password = req.body.password;
   if (loggedInUser) {
-    if (password === loggedInUser.password) {
+    if (bcrypt.compareSync(req.body.password, loggedInUser.password)) {
       res.cookie("user_id", loggedInUser.id);
       return res.redirect("/urls");
-      return;
     } else {
+      console.log(loggedInUser.password);
       res.status(403).send("Error. Password does not match records.");
       return;
     }
@@ -196,9 +203,10 @@ app.get("/register", function(req, res){
 });
 
 app.post("/register", function(req, res){
-  newUserID = generateRandomString(6);
-  password = req.body.password;
-  email = req.body.email;
+  const newUserID = generateRandomString(6);
+  const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+  const email = req.body.email;
   if (password === "" || email === "") {
     return res.status(400).send("Error. Invalid field detected.");
   }
@@ -208,18 +216,14 @@ app.post("/register", function(req, res){
   userDatabase[newUserID] = {
     id: newUserID,
     email: req.body.email,
-    password: req.body.password
+    password: hashedPassword
   };
+  console.log(userDatabase[newUserID].password);
   res.cookie(["user_id"], newUserID);
   return res.redirect("/urls");
 })
 
-app.get("/login", function(req, res) {
-  if (req.cookies["user_id"]) {
-    return res.redirect('/urls');
-  }
-  res.render("urls_login.ejs");
-});
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
