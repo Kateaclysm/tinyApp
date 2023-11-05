@@ -6,8 +6,16 @@ const { restart } = require("nodemon");
 const res = require("express/lib/response");
 const e = require("express");
 const bcrypt = require("bcryptjs");
-app.use(cookieParser());
+const cookieSession = require('cookie-session')
+const fetchUser = require('./helpers.js')
 app.set("view engine", "ejs");
+
+
+app.use(cookieSession({
+  name: 'user_id',
+  keys: ["123"],
+
+}));
 
 const urlDatabase = {
   "b2xVn2": {
@@ -23,6 +31,7 @@ const urlDatabase = {
     userID: "K5n2Qd"
   }
 };
+
 function generateRandomString(length) {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789"
   const newID = Array.from(characters);
@@ -36,17 +45,10 @@ function generateRandomString(length) {
   shortenedID = shortenedID.join('');
   return shortenedID;
 };
-function fetchUser(database, userEmail) {
-  for (user in database) {
-    if (database[user].email === userEmail) {
-      return database[user];
-    }
-  }
-};
 
-function detectIfOwned(userId, songID) {
+function detectIfOwned(userId, linkID) {
   let result = false;
-  if (urlDatabase[songID].userID === userId) {
+  if (urlDatabase[linkID].userID === userId) {
     result = true;
   }
   return result;
@@ -56,15 +58,16 @@ const userDatabase = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: "violet"
+    password: bcrypt.hashSync("violet", 10)
   }
 };
 app.use(express.urlencoded({ extended: true }));
 
 
 app.get("/urls", (req, res) => {
-  if (req.cookies["user_id"]) { // If the cookie value exists, render the homepage.
-    let user_id = req.cookies["user_id"];
+  let user_id = req.session.user_id;
+  console.log(user_id);
+  if (userDatabase[user_id]) { // If the cookie value exists, render the homepage.
     let user = userDatabase[user_id].email;
     let templateVars = { urls: urlDatabase, user: user, user_id: user_id};
     return res.render("urls_index", templateVars);
@@ -77,7 +80,7 @@ app.get("/urls", (req, res) => {
 
 
 app.post("/urls", (req, res) => {
-  let userCookie = req.cookies["user_id"];
+  let userCookie = req.session.user_id;
   if (!userCookie) {
     return res.status(403).send("Sorry! Only registered users can shorten URLs.")
   }
@@ -86,7 +89,7 @@ app.post("/urls", (req, res) => {
   urlDatabase[newShortID] = newShortID;
   urlDatabase[newShortID] = {
     longURL: newLongURL,
-    userID: req.cookies["user_id"]
+    userID: req.session.user_id
   };
   res.redirect(`/urls/${newShortID}`)
 });
@@ -97,10 +100,10 @@ app.get("/urls.json", (req, res) => {
 
 
 app.get("/urls/new", (req, res) => {
-let user_id = req.cookies["user_id"];
+let user_id = req.session.user_id;
 let user = userDatabase[`${user_id}`].email;
 let templateVars = { urls: urlDatabase, user: user };
-if (!req.cookies["user_id"]) {
+if (!req.session.user_id) {
  return res.redirect("/login");
 }
   return res.render("urls_new", templateVars);
@@ -119,7 +122,7 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-let user_id = req.cookies["user_id"];
+let user_id = req.session.user_id;
 let id = req.params.id;
   if (user_id) {
     if (user_id === urlDatabase[id].userID) {
@@ -135,7 +138,7 @@ let id = req.params.id;
 });
 
 app.post("/urls/:id/delete", function(req, res) {
-  let userId = req.cookies["user_id"];
+  let userId = req.session.user_id;
   let urlId = req.params.id;
   if (detectIfOwned(userId, urlId) === true) {
     delete urlDatabase[urlId];
@@ -152,7 +155,7 @@ app.post("/urls/:id/delete", function(req, res) {
 app.post("/urls/:id", function(req, res) {
   const longURL = req.body.newLongURL;
   const shortURL = req.params.id;
-  const user_id = req.cookies["user_id"]
+  const user_id = req.session.user_id;
   if (user_id) {
     urlDatabase[shortURL] = {
     longURL: longURL,
@@ -164,7 +167,8 @@ app.post("/urls/:id", function(req, res) {
   }
 });
 app.get("/login", function(req, res) {
-  if (req.cookies["user_id"]) {
+  let user_id = req.session.user_id;
+  if (userDatabase[user_id]) {
     return res.redirect('/urls');
   }
   res.render("urls_login.ejs");
@@ -174,9 +178,10 @@ app.post("/login", function(req, res){
   let email = req.body.email;
   let loggedInUser = fetchUser(userDatabase, email);
   let password = req.body.password;
+  let hashedPassword = bcrypt.hashSync(password, 10);
   if (loggedInUser) {
     if (bcrypt.compareSync(req.body.password, loggedInUser.password)) {
-      res.cookie("user_id", loggedInUser.id);
+      req.session.user_id = loggedInUser.id;
       return res.redirect("/urls");
     } else {
       console.log(loggedInUser.password);
@@ -196,14 +201,14 @@ app.post("/logout", function(req, res){
 });
 
 app.get("/register", function(req, res){
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     return res.redirect('/urls');
   }
   res.render("urls_registration.ejs")
 });
 
 app.post("/register", function(req, res){
-  const newUserID = generateRandomString(6);
+  const ID = generateRandomString(6);
   const password = req.body.password;
   const hashedPassword = bcrypt.hashSync(req.body.password, 10);
   const email = req.body.email;
@@ -213,13 +218,13 @@ app.post("/register", function(req, res){
   if (fetchUser(userDatabase, email)) {
     return res.status(400).send("Error. Email is already registered.")
   }
-  userDatabase[newUserID] = {
-    id: newUserID,
+  userDatabase[ID] = {
+    id: ID,
     email: req.body.email,
     password: hashedPassword
   };
-  console.log(userDatabase[newUserID].password);
-  res.cookie(["user_id"], newUserID);
+  req.session.user_id = ID;
+  console.log(req.session.user_id);
   return res.redirect("/urls");
 })
 
